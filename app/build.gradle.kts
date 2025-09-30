@@ -48,4 +48,6 @@ dependencies {
     implementation("androidx.compose.foundation:foundation")
     implementation("androidx.compose.material3:material3:1.3.0")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.6")
+    // Dependency for on-device LLM inference using MediaPipe tasks-genai
+    implementation("com.google.mediapipe:tasks-genai:0.10.27")
 }
