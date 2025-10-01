@@ -39,25 +39,11 @@ import androidx.compose.ui.unit.dp
 import com.example.circle2capture.overlay.CircleOverlay
 import com.example.circle2capture.utils.computeFitBounds
 import com.example.circle2capture.utils.cropCircleFromBitmap
+import com.google.mediapipe.framework.image.BitmapImageBuilder
+import com.google.mediapipe.tasks.genai.llminference.LlmInference
+import kotlinx.coroutines.launch
 import kotlin.math.min
 
-// Imports for Gemma 3n / LLM Inference
-import com.google.mediapipe.tasks.genai.llminference.LlmInference
-import com.google.mediapipe.tasks.genai.llminference.LlmInferenceOptions
-import com.google.mediapipe.tasks.genai.llminference.LlmInferenceSession
-import com.google.mediapipe.tasks.genai.llminference.LlmInferenceSessionOptions
-import com.google.mediapipe.tasks.core.GraphOptions
-import com.google.mediapipe.framework.image.BitmapImageBuilder
-
-/**
- * Main entry activity for the Circle Crop demo.
- *
- * This activity demonstrates how to select an image, overlay a resizable
- * circle over it and crop that region to produce a new bitmap.  In addition
- * we load an on‑device Gemma 3n model using the MediaPipe LLM Inference API
- * and generate a description of the cropped region.  The model file must be
- * present on the device (see build.gradle for dependency and docs for download).
- */
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -66,39 +52,28 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-// Simple navigation for three screens used in this demo
 private enum class Screen { Chat, Editor, Result }
 
 @Composable
 private fun App() {
-    // Keep track of which screen is shown
     var screen by remember { mutableStateOf(Screen.Chat) }
     var pickedUri by remember { mutableStateOf<Uri?>(null) }
     var croppedBitmap by remember { mutableStateOf<Bitmap?>(null) }
-    // Hold the LLM inference engine and its response
     val context = LocalContext.current
     var llmInference by remember { mutableStateOf<LlmInference?>(null) }
     var llmResponse by remember { mutableStateOf<String?>(null) }
     var llmLoading by remember { mutableStateOf(false) }
-    // Coroutine scope for asynchronous model loading and inference
     val scope = rememberCoroutineScope()
 
-    // Initialise the Gemma 3n model once when this composable is first shown
     LaunchedEffect(Unit) {
-        // Path on the device where the .task file is stored.  During development
-        // you can push the model with adb as described in the docs:
-        // adb push output_path /data/local/tmp/llm/gemma-3n-e2b-it.task
         val modelPath = "/data/local/tmp/llm/gemma-3n-e2b-it.task"
         try {
-            val options = LlmInferenceOptions.builder()
+            val options = LlmInference.LlmInferenceOptions.builder()
                 .setModelPath(modelPath)
                 .setMaxTokens(512)
-                .setTopK(40)
-                .setTemperature(0.4f)
                 .build()
             llmInference = LlmInference.createFromOptions(context, options)
         } catch (e: Exception) {
-            // If model loading fails, keep llmInference null.  UI will ignore it.
             e.printStackTrace()
         }
     }
@@ -118,29 +93,12 @@ private fun App() {
                 onCropped = { bmp ->
                     croppedBitmap = bmp
                     screen = Screen.Result
-                    // Trigger LLM inference asynchronously on the cropped bitmap
                     val inference = llmInference
                     if (inference != null && bmp != null) {
                         llmLoading = true
                         scope.launch {
                             try {
-                                // Convert the cropped bitmap into an MPImage
-                                val mpImage = BitmapImageBuilder(bmp).build()
-                                // Configure a session that enables vision modality
-                                val sessionOptions = LlmInferenceSessionOptions.builder()
-                                    .setTopK(10)
-                                    .setTemperature(0.4f)
-                                    .setGraphOptions(
-                                        GraphOptions.builder().setEnableVisionModality(true).build()
-                                    )
-                                    .build()
-                                // Create a new session and send the image and prompt
-                                LlmInferenceSession.createFromOptions(inference, sessionOptions).use { session ->
-                                    session.addQueryChunk("Describe the circled region in the image.")
-                                    session.addImage(mpImage)
-                                    val result = session.generateResponse()
-                                    llmResponse = result
-                                }
+                                llmResponse = inference.generateResponse("Describe the circled region in the image.")
                             } catch (e: Exception) {
                                 llmResponse = "Error running model: ${e.message}"
                             } finally {
@@ -166,9 +124,7 @@ private fun App() {
     }
 }
 
-/* -----------------------------
- * Screen 1: Chat-like picker
- * ----------------------------- */
+
 @Composable
 private fun ChatLikePicker(onPicked: (Uri) -> Unit) {
     val pickMedia = rememberLauncherForActivityResult(
@@ -223,9 +179,7 @@ private fun UserBubble(text: String) =
         ) { Text(text) }
     }
 
-/* -----------------------------
- * Screen 2: Editor with circle
- * ----------------------------- */
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun EditorScreen(
@@ -234,7 +188,6 @@ private fun EditorScreen(
     onCropped: (Bitmap) -> Unit
 ) {
     val ctx = LocalContext.current
-    // Decode as SOFTWARE to avoid "Software rendering doesn't support hardware bitmaps"
     val srcBitmap by remember(imageUri) {
         mutableStateOf(
             imageUri?.let { uri ->
@@ -257,7 +210,6 @@ private fun EditorScreen(
     var imageBounds by remember { mutableStateOf(androidx.compose.ui.geometry.Rect.Zero) }
     var center by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
     var radius by remember { mutableStateOf(120f) }
-    // Only allow crop when circle is valid and fully inside the image area
     val canCrop = imageBounds.width > 0f &&
             imageBounds.height > 0f &&
             radius >= 8f &&
@@ -293,7 +245,7 @@ private fun EditorScreen(
                 bitmap = srcBitmap!!.asImageBitmap(),
                 contentDescription = null,
                 contentScale = ContentScale.Fit,
-                modifier = Modifier.fillMaxSize() // replaced matchParentSize()
+                modifier = Modifier.fillMaxSize()
             )
             CircleOverlay(
                 boxSize = boxSize,
@@ -327,9 +279,6 @@ private fun EditorScreen(
     }
 }
 
-/* -----------------------------
- * Screen 3: Result
- * ----------------------------- */
 @Composable
 private fun ResultScreen(
     bitmap: Bitmap?,
@@ -363,7 +312,6 @@ private fun ResultScreen(
                         .clip(CircleShape),
                     contentScale = ContentScale.Fit
                 )
-                // Show loading indicator or response text
                 when {
                     isLoading -> {
                         CircularProgressIndicator()
