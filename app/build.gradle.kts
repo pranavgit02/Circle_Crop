@@ -48,7 +48,16 @@ dependencies {
     implementation("androidx.compose.foundation:foundation")
     implementation("androidx.compose.material3:material3:1.3.0")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.6")
-    // Dependency for on-device LLM inference using MediaPipe tasks-genai
-    implementation("com.google.mediapipe:tasks-genai:0.10.14")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.6")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.6")
+    // MediaPipe Tasks GenAI + Framework (for BitmapImageBuilder/MPImage)
+    implementation("com.google.mediapipe:tasks-genai:0.10.27")
+    // Provides MPImage/BitmapImageBuilder used to wrap Bitmaps
     implementation("com.google.mediapipe:tasks-core:0.10.14")
+
+    testImplementation("junit:junit:4.13.2")
+    androidTestImplementation("androidx.test.ext:junit:1.2.1")
+    androidTestImplementation("androidx.test.espresso:espresso-core:3.6.1")
+    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
 }

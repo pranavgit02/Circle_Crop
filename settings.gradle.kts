@@ -19,8 +19,7 @@ dependencyResolutionManagement {
     repositories {
         google()        // Android and Google artifacts
         mavenCentral()  // Standard Maven Central
-        // Add Google Maven repository here for MediaPipe artifacts
-        maven { url = uri("https://maven.google.com") }
+        // Keep only standard repositories for dependencies
     }
 }
 

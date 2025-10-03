@@ -1,0 +1,14 @@
+Execution failed for task ':app:checkDebugAarMetadata'.
+> Could not resolve all files for configuration ':app:debugRuntimeClasspath'.
+   > Could not find com.google.mediapipe:framework:0.10.29.
+     Searched in the following locations:
+       - https://dl.google.com/dl/android/maven2/com/google/mediapipe/framework/0.10.29/framework-0.10.29.pom
+       - https://repo.maven.apache.org/maven2/com/google/mediapipe/framework/0.10.29/framework-0.10.29.pom
+       - https://maven.google.com/com/google/mediapipe/framework/0.10.29/framework-0.10.29.pom
+     Required by:
+         project :app
+
+Possible solution:
+ - Declare repository providing the artifact, see the documentation at https://docs.gradle.org/current/userguide/declaring_repositories.html
+
+Ask Gemini

@@ -39,9 +39,8 @@ import androidx.compose.ui.unit.dp
 import com.example.circle2capture.overlay.CircleOverlay
 import com.example.circle2capture.utils.computeFitBounds
 import com.example.circle2capture.utils.cropCircleFromBitmap
-import com.google.mediapipe.framework.image.BitmapImageBuilder
-import com.google.mediapipe.tasks.genai.llminference.LlmInference
-import kotlinx.coroutines.launch
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.circle2capture.llm.LlmViewModel
 import kotlin.math.min
 
 class MainActivity : ComponentActivity() {
@@ -60,23 +59,13 @@ private fun App() {
     var pickedUri by remember { mutableStateOf<Uri?>(null) }
     var croppedBitmap by remember { mutableStateOf<Bitmap?>(null) }
     val context = LocalContext.current
-    var llmInference by remember { mutableStateOf<LlmInference?>(null) }
-    var llmResponse by remember { mutableStateOf<String?>(null) }
-    var llmLoading by remember { mutableStateOf(false) }
-    val scope = rememberCoroutineScope()
-
-    LaunchedEffect(Unit) {
-        val modelPath = "/data/local/tmp/llm/gemma-3n-e2b-it.task"
-        try {
-            val options = LlmInference.LlmInferenceOptions.builder()
-                .setModelPath(modelPath)
-                .setMaxTokens(512)
-                .build()
-            llmInference = LlmInference.createFromOptions(context, options)
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-    }
+    val modelPath = "/data/local/tmp/llm/gemma-3n-E2B-it-int4.task"
+    val llmVm: LlmViewModel = viewModel(
+        factory = LlmViewModel.provideFactory(
+            appContext = context.applicationContext,
+            modelPath = modelPath
+        )
+    )
 
     Surface {
         when (screen) {
@@ -88,35 +77,22 @@ private fun App() {
                 imageUri = pickedUri,
                 onBack = {
                     screen = Screen.Chat
-                    llmResponse = null
+                    llmVm.clearResponse()
                 },
                 onCropped = { bmp ->
                     croppedBitmap = bmp
                     screen = Screen.Result
-                    val inference = llmInference
-                    if (inference != null && bmp != null) {
-                        llmLoading = true
-                        scope.launch {
-                            try {
-                                llmResponse = inference.generateResponse("Describe the circled region in the image.")
-                            } catch (e: Exception) {
-                                llmResponse = "Error running model: ${e.message}"
-                            } finally {
-                                llmLoading = false
-                            }
-                        }
-                    }
+                    llmVm.describeImage(bmp)
                 }
             )
             Screen.Result -> ResultScreen(
                 bitmap = croppedBitmap,
-                llmResponse = llmResponse,
-                isLoading = llmLoading,
+                llmResponse = llmVm.response ?: llmVm.error,
+                isLoading = llmVm.inProgress || llmVm.preparing,
                 onRestart = {
                     pickedUri = null
                     croppedBitmap = null
-                    llmResponse = null
-                    llmLoading = false
+                    llmVm.clearResponse()
                     screen = Screen.Chat
                 }
             )
